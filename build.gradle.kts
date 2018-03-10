@@ -31,12 +31,12 @@ application {
 }
 
 dependencies {
-    val kafkaVersion = "1.0.0"
+    val kafkaVersion = "1.0.1"
 
     compile(kotlin("stdlib-jdk8"))
 
-    compile("org.apache.kafka:kafka-streams:1.0.1")
-    compile("org.apache.kafka:kafka_2.12:1.0.0")
+    compile("org.apache.kafka:kafka-streams:$kafkaVersion")
+    compile("org.apache.kafka:kafka_2.12:$kafkaVersion")
     compile("io.github.microutils:kotlin-logging:1.5.3")
 
     runtime("ch.qos.logback:logback-classic:1.2.3")
@@ -45,7 +45,7 @@ dependencies {
     testCompile("junit:junit:4.12")
     testCompile("org.assertj:assertj-core:3.9.1")
     testCompile("com.101tec:zkclient:0.10")
-    testCompile("org.apache.kafka:kafka-clients:1.0.1")
+    testCompile("org.apache.kafka:kafka-clients:$kafkaVersion")
     testCompile("com.natpryce:hamkrest:1.4.2.2")
 
     testRuntime(kotlin("reflect"))
