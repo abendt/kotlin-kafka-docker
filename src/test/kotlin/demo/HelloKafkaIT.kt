@@ -18,7 +18,7 @@ import java.util.*
 class HelloKafkaIT {
 
     @get:Rule
-    val kafkaBrokerRule = KafkaTopicRule()
+    private val kafkaBrokerRule = KafkaTopicRule()
 
     private val inputTopic = "inputTopic"
 
