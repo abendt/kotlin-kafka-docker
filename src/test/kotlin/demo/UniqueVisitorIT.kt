@@ -67,7 +67,7 @@ class UniqueVisitorIT {
         val input: KStream<String, TrackingEvent> = builder.stream(inputTopic)
 
         val oneMinuteWindowed = input.groupByKey()
-                .windowedBy(TimeWindows.of(60 * 1000))
+                .windowedBy(TimeWindows.of(60 * 1000 * 2))
                 .reduce({ value1, _ -> value1 })
 
         oneMinuteWindowed.toStream().map { key, value -> KeyValue(key.key(), value) }.to(outputTopic)
