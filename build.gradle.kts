@@ -37,7 +37,10 @@ dependencies {
 
     compile("org.apache.kafka:kafka-streams:$kafkaVersion")
     compile("org.apache.kafka:kafka_2.12:$kafkaVersion")
-    compile("io.github.microutils:kotlin-logging:1.5.3")
+    compile("io.github.microutils:kotlin-logging:1.5.4")
+
+    compile("com.fasterxml.jackson.module:jackson-module-kotlin:2.9.4.1")
+    compile("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.9.4")
 
     runtime("ch.qos.logback:logback-classic:1.2.3")
     runtime("org.slf4j:log4j-over-slf4j:1.7.25")
