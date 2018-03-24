@@ -4,7 +4,6 @@ import com.natpryce.hamkrest.assertion.assert
 import com.natpryce.hamkrest.equalTo
 import com.natpryce.hamkrest.hasSize
 import demo.eventtracking.TrackingEvent
-import demo.eventtracking.TrackingEventDeserializer
 import demo.eventtracking.TrackingEventSerde
 import demo.eventtracking.TrackingEventSerializer
 import org.apache.kafka.clients.consumer.ConsumerConfig
@@ -13,12 +12,11 @@ import org.apache.kafka.common.errors.TopicExistsException
 import org.apache.kafka.common.serialization.Serdes
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.kafka.common.serialization.StringSerializer
-import org.apache.kafka.streams.KafkaStreams
-import org.apache.kafka.streams.KeyValue
-import org.apache.kafka.streams.StreamsBuilder
-import org.apache.kafka.streams.StreamsConfig
-import org.apache.kafka.streams.kstream.KStream
-import org.apache.kafka.streams.kstream.TimeWindows
+import org.apache.kafka.streams.*
+import org.apache.kafka.streams.kstream.*
+import org.apache.kafka.streams.kstream.internals.TimeWindow
+import org.apache.kafka.streams.kstream.internals.WindowedDeserializer
+import org.apache.kafka.streams.kstream.internals.WindowedSerializer
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -49,9 +47,9 @@ class UniqueVisitorIT {
         kafkaBrokerRule.deleteTopic(outputTopic)
     }
 
+
     @Test
     fun shouldUppercaseTheInput() {
-        val inputValues = listOf(TrackingEvent("user2"), TrackingEvent("user1"), TrackingEvent("user1"), TrackingEvent("user1"))
 
         val builder = StreamsBuilder()
 
@@ -59,18 +57,40 @@ class UniqueVisitorIT {
             put(StreamsConfig.APPLICATION_ID_CONFIG, "unique-visitors")
             put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaBrokerRule.bootstrapServers())
             put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().javaClass.name)
-            put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, TrackingEventSerde::class.java)
+            put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.Long().javaClass.name)
             put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
             put(StreamsConfig.PROCESSING_GUARANTEE_CONFIG, StreamsConfig.EXACTLY_ONCE)
         }
 
-        val input: KStream<String, TrackingEvent> = builder.stream(inputTopic)
+        val input: KStream<String, TrackingEvent> = builder.stream(inputTopic, Consumed.with(Serdes.String(), TrackingEventSerde()))
 
-        val oneMinuteWindowed = input.groupByKey()
-                .windowedBy(TimeWindows.of(60 * 1000 * 2))
-                .reduce({ value1, _ -> value1 })
+        val oneMinutePerUser = input
+                .peek({ key, value -> println("-> $key = $value") }) // Debug Output
+                .groupByKey()                                        // group all events from same user
+                .windowedBy(TimeWindows.of(60 * 1000))       // within timewindow
+                .aggregate({0L}, {_, _, _ ->  1L})                   // collapse to value 1
 
-        oneMinuteWindowed.toStream().map { key, value -> KeyValue(key.key(), value) }.to(outputTopic)
+        val windowedSerdes =
+                Serialized.with(Serdes.serdeFrom(WindowedSerializer(StringSerializer()), WindowedDeserializer(StringDeserializer())), Serdes.Long())
+
+        val oneMinuteActiveUsers = oneMinutePerUser.groupBy({ windowedKey, value ->
+            KeyValue(
+                    Windowed(
+                            windowedKey.window().toString(),
+                            windowedKey.window()
+                    ),
+                    value
+            )
+        }, windowedSerdes)
+                .reduce({ value1: Long, value2: Long -> value1 + value2 }, { value1, value2 -> value1 - value2 })
+
+        oneMinuteActiveUsers
+                .toStream()
+                .peek({ key, value -> println("State: $key = $value") })
+
+                .map({ key, value -> KeyValue(key.toString(), value.toString()) })
+
+                .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()))
 
         val streams = KafkaStreams(builder.build(), streamsConfiguration)
         streams.start()
@@ -85,7 +105,13 @@ class UniqueVisitorIT {
             put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer::class.java)
             put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, TrackingEventSerializer::class.java)
         }
-        IntegrationTestUtils.produceKeyValuesSynchronously(inputTopic, inputValues.map { KeyValue(it.name, it) }, producerConfig)
+
+        repeat(2) {
+            val data = listOf(TrackingEvent("user"), TrackingEvent("user2"))
+            IntegrationTestUtils.produceKeyValuesSynchronously(inputTopic, data.map { KeyValue(it.name, it) }, producerConfig)
+
+            Thread.sleep(60)
+        }
 
         //
         // Step 3: Verify the application's output data.
@@ -95,15 +121,16 @@ class UniqueVisitorIT {
             put(ConsumerConfig.GROUP_ID_CONFIG, "unique-visitors-consumer")
             put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
             put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer::class.java)
-            put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, TrackingEventDeserializer::class.java)
+            put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer::class.java)
         }
 
-        val actual = IntegrationTestUtils.waitUntilMinKeyValueRecordsReceived<String, TrackingEvent>(consumerConfig, outputTopic, 2)
+        val actual = IntegrationTestUtils.waitUntilMinKeyValueRecordsReceived<String, String>(consumerConfig, outputTopic, 1)
         streams.close()
 
         println(actual)
 
-        assert.that(actual, hasSize(equalTo(2)))
+        assert.that(actual, hasSize(equalTo(1)))
     }
+
 
 }

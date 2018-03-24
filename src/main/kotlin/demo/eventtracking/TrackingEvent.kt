@@ -10,7 +10,7 @@ import org.apache.kafka.common.serialization.Serializer
 
 data class TrackingEvent(val name: String)
 
-private object JACKSON {
+object JACKSON {
     val mapper = ObjectMapper()
             .registerModule(KotlinModule())
             .registerModule(JavaTimeModule())
