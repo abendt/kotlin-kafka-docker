@@ -30,6 +30,19 @@ class KafkaTopicRule : ExternalResource() {
         logger.debug("Creating topic { name: {}, partitions: {}, replication: {}, config: {} }",
                 topic, partitions, replication, topicConfig)
 
+        withZk {
+            AdminUtils.createTopic(it, topic, partitions, replication, topicConfig, RackAwareMode.`Enforced$`.`MODULE$`)
+        }
+    }
+
+    fun deleteTopic(topic: String) {
+        withZk {
+            AdminUtils.deleteTopic(it, topic)
+        }
+    }
+
+    private fun <T> withZk(block: (zk: ZkUtils) -> T): T {
+
         // Note: You must initialize the ZkClient with ZKStringSerializer.  If you don't, then
         // createTopic() will only seem to work (it will return without error).  The topic will exist in
         // only ZooKeeper and will be returned when listing topics, but Kafka itself does not create the
@@ -41,8 +54,12 @@ class KafkaTopicRule : ExternalResource() {
                 `ZKStringSerializer$`.`MODULE$`)
         val isSecure = false
         val zkUtils = ZkUtils(zkClient, ZkConnection(zookeeperConnect()), isSecure)
-        AdminUtils.createTopic(zkUtils, topic, partitions, replication, topicConfig, RackAwareMode.`Enforced$`.`MODULE$`)
-        zkClient.close()
+
+        try {
+            return block(zkUtils)
+        } finally {
+            zkClient.close()
+        }
     }
 
     fun bootstrapServers() = "localhost:9092"

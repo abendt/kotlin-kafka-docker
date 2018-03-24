@@ -23,6 +23,7 @@ import org.junit.Test
 import java.util.*
 import com.natpryce.hamkrest.assertion.assert
 import com.natpryce.hamkrest.equalTo
+import org.junit.After
 
 
 class UniqueVisitorIT {
@@ -30,9 +31,9 @@ class UniqueVisitorIT {
     @get:Rule
     private val kafkaBrokerRule = KafkaTopicRule()
 
-    private val inputTopic = "applicationEvents"
+    private val inputTopic = UUID.randomUUID().toString()
 
-    private val outputTopic = "uniqueVisitors"
+    private val outputTopic = UUID.randomUUID().toString()
 
     companion object {
         val mapper = ObjectMapper()
@@ -49,6 +50,12 @@ class UniqueVisitorIT {
             kafkaBrokerRule.createTopic(outputTopic)
         } catch (e: TopicExistsException) {
         }
+    }
+
+    @After
+    fun tearDown() {
+        kafkaBrokerRule.deleteTopic(inputTopic)
+        kafkaBrokerRule.deleteTopic(outputTopic)
     }
 
     @Test
