@@ -14,7 +14,6 @@ import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.kafka.common.serialization.StringSerializer
 import org.apache.kafka.streams.*
 import org.apache.kafka.streams.kstream.*
-import org.apache.kafka.streams.kstream.internals.TimeWindow
 import org.apache.kafka.streams.kstream.internals.WindowedDeserializer
 import org.apache.kafka.streams.kstream.internals.WindowedSerializer
 import org.junit.After
@@ -131,6 +130,5 @@ class UniqueVisitorIT {
 
         assert.that(actual, hasSize(equalTo(1)))
     }
-
 
 }
