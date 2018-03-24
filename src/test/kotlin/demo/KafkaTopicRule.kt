@@ -10,13 +10,13 @@ import org.I0Itec.zkclient.ZkConnection
 import org.junit.rules.ExternalResource
 import java.util.*
 
-class KafkaBrokerRule : ExternalResource() {
+class KafkaTopicRule : ExternalResource() {
 
     companion object : KLogging() {
         fun zookeeperConnect() = "127.0.0.1:2181"
 
-        private val DEFAULT_ZK_SESSION_TIMEOUT_MS = 10 * 1000
-        private val DEFAULT_ZK_CONNECTION_TIMEOUT_MS = 8 * 1000
+        private const val DEFAULT_ZK_SESSION_TIMEOUT_MS = 10 * 1000
+        private const val DEFAULT_ZK_CONNECTION_TIMEOUT_MS = 8 * 1000
     }
 
     fun createTopic(topic: String) {

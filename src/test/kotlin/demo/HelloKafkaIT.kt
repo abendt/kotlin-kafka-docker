@@ -7,10 +7,9 @@ import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.errors.TopicExistsException
 import org.apache.kafka.common.serialization.*
 import org.apache.kafka.streams.KafkaStreams
+import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.StreamsConfig
 import org.apache.kafka.streams.kstream.KStream
-import org.apache.kafka.streams.kstream.KStreamBuilder
-import org.apache.kafka.streams.kstream.Predicate
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -19,7 +18,7 @@ import java.util.*
 class HelloKafkaIT {
 
     @get:Rule
-    val kafkaBrokerRule = KafkaBrokerRule()
+    val kafkaBrokerRule = KafkaTopicRule()
 
     private val inputTopic = "inputTopic"
 
@@ -39,7 +38,7 @@ class HelloKafkaIT {
         val inputValues = listOf("hello", "", "world")
         val expectedValues = listOf("HELLO", "WORLD")
 
-        val builder = KStreamBuilder()
+        val builder = StreamsBuilder()
 
         val streamsConfiguration = Properties().apply {
             put(StreamsConfig.APPLICATION_ID_CONFIG, "map-function-lambda-integration-test")
@@ -54,7 +53,7 @@ class HelloKafkaIT {
         val filtered = uppercased.filter { _, value -> !value.isBlank() }
         filtered.to(outputTopic)
 
-        val streams = KafkaStreams(builder, streamsConfiguration)
+        val streams = KafkaStreams(builder.build(), streamsConfiguration)
         streams.start()
 
         //
