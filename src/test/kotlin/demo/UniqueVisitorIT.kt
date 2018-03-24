@@ -1,10 +1,12 @@
 package demo
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.SerializationFeature
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
-import com.fasterxml.jackson.module.kotlin.KotlinModule
+import com.natpryce.hamkrest.assertion.assert
+import com.natpryce.hamkrest.equalTo
 import com.natpryce.hamkrest.hasSize
+import demo.eventtracking.TrackingEvent
+import demo.eventtracking.TrackingEventDeserializer
+import demo.eventtracking.TrackingEventSerde
+import demo.eventtracking.TrackingEventSerializer
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.errors.TopicExistsException
@@ -17,14 +19,11 @@ import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.StreamsConfig
 import org.apache.kafka.streams.kstream.KStream
 import org.apache.kafka.streams.kstream.TimeWindows
+import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import java.util.*
-import com.natpryce.hamkrest.assertion.assert
-import com.natpryce.hamkrest.equalTo
-import org.junit.After
-
 
 class UniqueVisitorIT {
 
@@ -34,14 +33,6 @@ class UniqueVisitorIT {
     private val inputTopic = UUID.randomUUID().toString()
 
     private val outputTopic = UUID.randomUUID().toString()
-
-    companion object {
-        val mapper = ObjectMapper()
-                .registerModule(KotlinModule())
-                .registerModule(JavaTimeModule())
-                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
-    }
-
 
     @Before
     fun setUp() {
@@ -60,7 +51,7 @@ class UniqueVisitorIT {
 
     @Test
     fun shouldUppercaseTheInput() {
-        val inputValues = listOf(WebVisit("user2"), WebVisit("user1"), WebVisit("user1"), WebVisit("user1"))
+        val inputValues = listOf(TrackingEvent("user2"), TrackingEvent("user1"), TrackingEvent("user1"), TrackingEvent("user1"))
 
         val builder = StreamsBuilder()
 
@@ -68,11 +59,12 @@ class UniqueVisitorIT {
             put(StreamsConfig.APPLICATION_ID_CONFIG, "unique-visitors")
             put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaBrokerRule.bootstrapServers())
             put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().javaClass.name)
-            put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().javaClass.name)
+            put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, TrackingEventSerde::class.java)
             put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
             put(StreamsConfig.PROCESSING_GUARANTEE_CONFIG, StreamsConfig.EXACTLY_ONCE)
         }
-        val input: KStream<String, String> = builder.stream(inputTopic)
+
+        val input: KStream<String, TrackingEvent> = builder.stream(inputTopic)
 
         val oneMinuteWindowed = input.groupByKey()
                 .windowedBy(TimeWindows.of(60 * 1000))
@@ -91,9 +83,9 @@ class UniqueVisitorIT {
             put(ProducerConfig.ACKS_CONFIG, "all")
             put(ProducerConfig.RETRIES_CONFIG, 0)
             put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer::class.java)
-            put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer::class.java)
+            put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, TrackingEventSerializer::class.java)
         }
-        IntegrationTestUtils.produceKeyValuesSynchronously(inputTopic, inputValues.map { KeyValue(it.name, it.toString()) }, producerConfig)
+        IntegrationTestUtils.produceKeyValuesSynchronously(inputTopic, inputValues.map { KeyValue(it.name, it) }, producerConfig)
 
         //
         // Step 3: Verify the application's output data.
@@ -103,15 +95,15 @@ class UniqueVisitorIT {
             put(ConsumerConfig.GROUP_ID_CONFIG, "unique-visitors-consumer")
             put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
             put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer::class.java)
-            put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer::class.java)
+            put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, TrackingEventDeserializer::class.java)
         }
 
-        val actualValues: List<String> = IntegrationTestUtils.readValues<String, String>(outputTopic, consumerConfig, 1)
+        val actual = IntegrationTestUtils.waitUntilMinKeyValueRecordsReceived<String, TrackingEvent>(consumerConfig, outputTopic, 2)
         streams.close()
 
-        assert.that(actualValues, hasSize(equalTo(2)))
-    }
+        println(actual)
 
-    data class WebVisit(val name: String)
+        assert.that(actual, hasSize(equalTo(2)))
+    }
 
 }
