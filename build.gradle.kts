@@ -18,7 +18,7 @@ buildscript {
 
 plugins {
     application
-    kotlin("jvm") version "1.2.30"
+    kotlin("jvm") version "1.2.31"
     id("com.bmuschko.docker-remote-api") version "3.2.5"
 }
 
