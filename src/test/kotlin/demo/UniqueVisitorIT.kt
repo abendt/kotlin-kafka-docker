@@ -12,10 +12,12 @@ import org.apache.kafka.common.errors.TopicExistsException
 import org.apache.kafka.common.serialization.Serdes
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.kafka.common.serialization.StringSerializer
+import org.apache.kafka.common.utils.Bytes
 import org.apache.kafka.streams.*
 import org.apache.kafka.streams.kstream.*
 import org.apache.kafka.streams.kstream.internals.WindowedDeserializer
 import org.apache.kafka.streams.kstream.internals.WindowedSerializer
+import org.apache.kafka.streams.state.WindowStore
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -54,8 +56,6 @@ class UniqueVisitorIT {
         val streamsConfiguration = Properties().apply {
             put(StreamsConfig.APPLICATION_ID_CONFIG, "unique-visitors")
             put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaBrokerRule.bootstrapServers())
-            put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().javaClass.name)
-            put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.Long().javaClass.name)
             put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
             put(StreamsConfig.PROCESSING_GUARANTEE_CONFIG, StreamsConfig.EXACTLY_ONCE)
         }
@@ -69,7 +69,10 @@ class UniqueVisitorIT {
                 .peek({ key, value -> println("-> $key = $value") }) // Debug Output
                 .groupByKey()                                        // group events by user
                 .windowedBy(TimeWindows.of(60 * 1000))       // within timewindow
-                .aggregate({ 0L }, { _, _, _ -> 1L })                   // collapse to value 1
+                .aggregate({ 0L }, { _, _, _ -> 1L },                // collapse to value 1
+                        Materialized.`as`<String, Long, WindowStore<Bytes, ByteArray>>("one-minute-per-user")
+                                .withKeySerde(Serdes.String())
+                                .withValueSerde(Serdes.Long()))
 
 
         val oneMinuteActiveUsers: KTable<Windowed<String>, Long> =
@@ -81,7 +84,7 @@ class UniqueVisitorIT {
                             ),
                             value
                     )
-                }, Serialized.with(windowedEventSerdes,
+                }, Serialized.with(windowedString,
                         Serdes.Long()))
                         .reduce({ l, r -> l + r },
                                 { l, r -> l - r })
@@ -135,7 +138,7 @@ class UniqueVisitorIT {
     }
 
     companion object {
-        val windowedEventSerdes = Serdes.serdeFrom(WindowedSerializer(StringSerializer()),
+        val windowedString = Serdes.serdeFrom(WindowedSerializer(StringSerializer()),
                 WindowedDeserializer(StringDeserializer()))
     }
 
