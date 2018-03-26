@@ -46,7 +46,6 @@ class UniqueVisitorIT {
         kafkaBrokerRule.deleteTopic(outputTopic)
     }
 
-
     @Test
     fun shouldUppercaseTheInput() {
 
@@ -61,27 +60,31 @@ class UniqueVisitorIT {
             put(StreamsConfig.PROCESSING_GUARANTEE_CONFIG, StreamsConfig.EXACTLY_ONCE)
         }
 
-        val input: KStream<String, TrackingEvent> = builder.stream(inputTopic, Consumed.with(Serdes.String(), TrackingEventSerde()))
+        val input: KStream<String, TrackingEvent> =
+                builder.stream(inputTopic,
+                        Consumed.with(Serdes.String(),
+                                TrackingEventSerde()))
 
-        val oneMinutePerUser = input
+        val oneMinutePerUser: KTable<Windowed<String>, Long> = input
                 .peek({ key, value -> println("-> $key = $value") }) // Debug Output
-                .groupByKey()                                        // group all events from same user
+                .groupByKey()                                        // group events by user
                 .windowedBy(TimeWindows.of(60 * 1000))       // within timewindow
-                .aggregate({0L}, {_, _, _ ->  1L})                   // collapse to value 1
+                .aggregate({ 0L }, { _, _, _ -> 1L })                   // collapse to value 1
 
-        val windowedSerdes =
-                Serialized.with(Serdes.serdeFrom(WindowedSerializer(StringSerializer()), WindowedDeserializer(StringDeserializer())), Serdes.Long())
 
-        val oneMinuteActiveUsers = oneMinutePerUser.groupBy({ windowedKey, value ->
-            KeyValue(
-                    Windowed(
-                            windowedKey.window().toString(),
-                            windowedKey.window()
-                    ),
-                    value
-            )
-        }, windowedSerdes)
-                .reduce({ value1: Long, value2: Long -> value1 + value2 }, { value1, value2 -> value1 - value2 })
+        val oneMinuteActiveUsers: KTable<Windowed<String>, Long> =
+                oneMinutePerUser.groupBy({ windowedKey, value ->
+                    KeyValue(
+                            Windowed(
+                                    windowedKey.window().toString(),
+                                    windowedKey.window()
+                            ),
+                            value
+                    )
+                }, Serialized.with(windowedEventSerdes,
+                        Serdes.Long()))
+                        .reduce({ l, r -> l + r },
+                                { l, r -> l - r })
 
         oneMinuteActiveUsers
                 .toStream()
@@ -129,6 +132,11 @@ class UniqueVisitorIT {
         println(actual)
 
         assert.that(actual, hasSize(equalTo(1)))
+    }
+
+    companion object {
+        val windowedEventSerdes = Serdes.serdeFrom(WindowedSerializer(StringSerializer()),
+                WindowedDeserializer(StringDeserializer()))
     }
 
 }
