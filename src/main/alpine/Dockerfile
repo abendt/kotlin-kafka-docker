@@ -2,9 +2,10 @@
 
 FROM anapsix/alpine-java:8_server-jre
 
+ARG KAFKA_VERSION
+
 ENV ZK_VERSION 3.4.11
 ENV SCALA_VERSION 2.12
-ENV KAFKA_VERSION 1.0.1
 ENV KAFKA_HOME /opt/kafka_"$SCALA_VERSION"-"$KAFKA_VERSION"
 
 RUN apk upgrade && \

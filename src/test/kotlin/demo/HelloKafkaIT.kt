@@ -20,9 +20,9 @@ class HelloKafkaIT {
     @get:Rule
     private val kafkaBrokerRule = KafkaTopicRule()
 
-    private val inputTopic = "inputTopic"
+    private val inputTopic = UUID.randomUUID().toString()
 
-    private val outputTopic = "outputTopic"
+    private val outputTopic = UUID.randomUUID().toString()
 
     @Before
     fun setUp() {
@@ -54,7 +54,6 @@ class HelloKafkaIT {
         filtered.to(outputTopic)
 
         val streams = KafkaStreams(builder.build(), streamsConfiguration)
-        streams.start()
 
         //
         // Step 2: Produce some input data to the input topic.
@@ -67,6 +66,8 @@ class HelloKafkaIT {
             put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer::class.java)
         }
         IntegrationTestUtils.produceValuesSynchronously(inputTopic, inputValues, producerConfig)
+
+        streams.start()
 
         //
         // Step 3: Verify the application's output data.

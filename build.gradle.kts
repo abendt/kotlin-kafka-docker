@@ -62,6 +62,7 @@ configurations {
 tasks {
 
     val testContainerName = "kotlin-kafka-docker"
+    val kafkaVersion = "1.0.1"
 
     createTask("dockerInfo", DockerInfo::class) {}
 
@@ -69,7 +70,8 @@ tasks {
 
     createTask("dockerBuild", DockerBuildImage::class) {
         inputDir = projectDir.resolve("src/main/alpine")
-        tag = "abendt/kafka-alpine"
+        tag = "abendt/kafka-alpine:$kafkaVersion"
+        buildArgs.put("KAFKA_VERSION", kafkaVersion)
     }
 
     createTask("dockerRemove", Exec::class) {
@@ -81,7 +83,7 @@ tasks {
 
     val dockerCreate = createTask("dockerCreate", DockerCreateContainer::class) {
         dependsOn("dockerBuild", "dockerRemove")
-        targetImageId { "abendt/kafka-alpine" }
+        targetImageId { "abendt/kafka-alpine:$kafkaVersion" }
         portBindings = listOf("2181:2181", "9092:9092")
         setEnv("ADVERTISED_HOST=127.0.0.1", "ADVERTISED_PORT=9092")
         containerName = testContainerName
