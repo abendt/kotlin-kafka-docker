@@ -31,7 +31,7 @@ application {
 }
 
 dependencies {
-    val kafkaVersion = "1.0.1"
+    val kafkaVersion = "1.1.0"
 
     compile(kotlin("stdlib-jdk8"))
 
@@ -39,8 +39,8 @@ dependencies {
     compile("org.apache.kafka:kafka_2.12:$kafkaVersion")
     compile("io.github.microutils:kotlin-logging:1.5.4")
 
-    compile("com.fasterxml.jackson.module:jackson-module-kotlin:2.9.4.1")
-    compile("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.9.4")
+    compile("com.fasterxml.jackson.module:jackson-module-kotlin:2.9.5")
+    compile("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.9.5")
 
     runtime("ch.qos.logback:logback-classic:1.2.3")
     runtime("org.slf4j:log4j-over-slf4j:1.7.25")
@@ -62,7 +62,7 @@ configurations {
 tasks {
 
     val testContainerName = "kotlin-kafka-docker"
-    val kafkaVersion = "1.0.1"
+    val kafkaVersion = "1.1.0"
 
     createTask("dockerInfo", DockerInfo::class) {}
 

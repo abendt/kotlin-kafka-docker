@@ -10,6 +10,7 @@ import org.apache.kafka.streams.KafkaStreams
 import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.StreamsConfig
 import org.apache.kafka.streams.kstream.KStream
+import org.apache.kafka.streams.kstream.ValueMapper
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -49,7 +50,7 @@ class HelloKafkaIT {
             put(StreamsConfig.PROCESSING_GUARANTEE_CONFIG, StreamsConfig.EXACTLY_ONCE)
         }
         val input: KStream<ByteArray, String> = builder.stream(inputTopic)
-        val uppercased = input.mapValues { it.toUpperCase() }
+        val uppercased = input.mapValues(ValueMapper<String, String> { it.toUpperCase() })
         val filtered = uppercased.filter { _, value -> !value.isBlank() }
         filtered.to(outputTopic)
 
