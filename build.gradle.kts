@@ -64,24 +64,24 @@ tasks {
     val testContainerName = "kotlin-kafka-docker"
     val kafkaVersion = "1.1.0"
 
-    createTask("dockerInfo", DockerInfo::class) {}
+    val dockerInfo by creating(DockerInfo::class) {}
 
-    createTask("dockerVersion", DockerVersion::class) {}
+    val dockerVersion by creating(DockerVersion::class) {}
 
-    createTask("dockerBuild", DockerBuildImage::class) {
+    val dockerBuild by creating(DockerBuildImage::class) {
         inputDir = projectDir.resolve("src/main/alpine")
         tag = "abendt/kafka-alpine:$kafkaVersion"
         buildArgs.put("KAFKA_VERSION", kafkaVersion)
     }
 
-    createTask("dockerRemove", Exec::class) {
+    val dockerRemove by creating(Exec::class) {
         group = "docker"
         executable = "docker"
         args = listOf("rm", "-f", testContainerName)
         isIgnoreExitValue = true
     }
 
-    val dockerCreate = createTask("dockerCreate", DockerCreateContainer::class) {
+    val dockerCreate by creating(DockerCreateContainer::class) {
         dependsOn("dockerBuild", "dockerRemove")
         targetImageId { "abendt/kafka-alpine:$kafkaVersion" }
         portBindings = listOf("2181:2181", "9092:9092")
@@ -89,29 +89,29 @@ tasks {
         containerName = testContainerName
     }
 
-    createTask("dockerStart", DockerStartContainer::class) {
-        dependsOn("dockerCreate")
+    val dockerStart by creating(DockerStartContainer::class) {
+        dependsOn(dockerCreate)
 
         targetContainerId { dockerCreate.containerId }
     }
 
-    createTask("dockerStop", DockerStopContainer::class) {
+    val dockerStop by creating(DockerStopContainer::class) {
         targetContainerId { dockerCreate.containerId }
     }
 
-    createTask("dockerWaitHealthy", DockerWaitHealthyContainer::class) {
+    val dockerWaitHealthy by creating(DockerWaitHealthyContainer::class) {
         targetContainerId { dockerCreate.containerId }
     }
 
-    "test"(Test::class) {
+    val test by getting(Test::class) {
         include("**/*Test.class")
     }
 
-    createTask("it", Test::class) {
+    val integrationTest by creating(Test::class) {
         description = "run Integration tests"
 
-        dependsOn("test", "dockerStart", "dockerWaitHealthy")
-        finalizedBy("dockerStop")
+        dependsOn(test, dockerStart, dockerWaitHealthy)
+        finalizedBy(dockerStop)
 
         include("**/*IT.class")
     }
