@@ -108,6 +108,8 @@ tasks {
     }
 
     createTask("it", Test::class) {
+        description = "run Integration tests"
+
         dependsOn("test", "dockerStart", "dockerWaitHealthy")
         finalizedBy("dockerStop")
 
