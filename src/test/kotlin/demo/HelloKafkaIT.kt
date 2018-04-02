@@ -1,7 +1,5 @@
 package demo
 
-import com.natpryce.hamkrest.assertion.assert
-import com.natpryce.hamkrest.equalTo
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.errors.TopicExistsException
@@ -11,6 +9,7 @@ import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.StreamsConfig
 import org.apache.kafka.streams.kstream.KStream
 import org.apache.kafka.streams.kstream.ValueMapper
+import org.assertj.core.api.KotlinAssertions
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -84,6 +83,7 @@ class HelloKafkaIT {
         val actualValues: List<String> = IntegrationTestUtils.waitUntilMinValuesRecordsReceived(consumerConfig,
                 outputTopic, expectedValues.size)
         streams.close()
-        assert.that(actualValues, equalTo(expectedValues))
+
+        KotlinAssertions.assertThat(actualValues).isEqualTo(expectedValues)
     }
 }

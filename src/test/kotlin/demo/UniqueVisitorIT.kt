@@ -1,14 +1,12 @@
 package demo
 
-import com.natpryce.hamkrest.assertion.assert
-import com.natpryce.hamkrest.equalTo
-import com.natpryce.hamkrest.hasSize
 import demo.eventtracking.TrackingEvent
 import demo.eventtracking.TrackingEventSerde
 import demo.eventtracking.TrackingEventSerializer
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.errors.TopicExistsException
+import org.apache.kafka.common.serialization.LongDeserializer
 import org.apache.kafka.common.serialization.Serdes
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.kafka.common.serialization.StringSerializer
@@ -18,6 +16,7 @@ import org.apache.kafka.streams.kstream.*
 import org.apache.kafka.streams.kstream.internals.WindowedDeserializer
 import org.apache.kafka.streams.kstream.internals.WindowedSerializer
 import org.apache.kafka.streams.state.WindowStore
+import org.assertj.core.api.KotlinAssertions
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -93,9 +92,9 @@ class UniqueVisitorIT {
                 .toStream()
                 .peek({ key, value -> println("State: $key = $value") })
 
-                .map({ key, value -> KeyValue(key.toString(), value.toString()) })
+                .map({ key, value -> KeyValue(key.toString(), value) })
 
-                .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()))
+                .to(outputTopic, Produced.with(Serdes.String(), Serdes.Long()))
 
         val streams = KafkaStreams(builder.build(), streamsConfiguration)
         streams.start()
@@ -126,15 +125,15 @@ class UniqueVisitorIT {
             put(ConsumerConfig.GROUP_ID_CONFIG, "unique-visitors-consumer")
             put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
             put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer::class.java)
-            put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer::class.java)
+            put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, LongDeserializer::class.java)
         }
 
-        val actual = IntegrationTestUtils.waitUntilMinKeyValueRecordsReceived<String, String>(consumerConfig, outputTopic, 1)
+        val actual = IntegrationTestUtils.waitUntilMinKeyValueRecordsReceived<String, Long>(consumerConfig, outputTopic, 1)
         streams.close()
 
         println(actual)
 
-        assert.that(actual, hasSize(equalTo(1)))
+        KotlinAssertions.assertThat(actual).extracting("value").containsOnly(2L)
     }
 
     companion object {

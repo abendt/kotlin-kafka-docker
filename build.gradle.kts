@@ -47,9 +47,9 @@ dependencies {
 
     testCompile("junit:junit:4.12")
     testCompile("org.assertj:assertj-core:3.9.1")
+    testCompile("net.wuerl.kotlin:assertj-core-kotlin:0.2.1")
     testCompile("com.101tec:zkclient:0.10")
     testCompile("org.apache.kafka:kafka-clients:$kafkaVersion")
-    testCompile("com.natpryce:hamkrest:1.4.2.2")
 
     testRuntime(kotlin("reflect"))
 }
@@ -112,6 +112,7 @@ tasks {
 
         dependsOn(test, dockerStart, dockerWaitHealthy)
         finalizedBy(dockerStop)
+        maxParallelForks = 2
 
         include("**/*IT.class")
     }
