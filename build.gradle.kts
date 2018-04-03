@@ -8,6 +8,7 @@ import com.bmuschko.gradle.docker.tasks.container.extras.DockerWaitHealthyContai
 import com.bmuschko.gradle.docker.tasks.image.DockerBuildImage
 import com.bmuschko.gradle.docker.tasks.image.DockerPullImage
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.io.IOException
 
 buildscript {
@@ -118,9 +119,15 @@ tasks {
     }
 }
 
-tasks.withType(Test::class.java) {
+tasks.withType<Test>{
     testLogging {
         exceptionFormat = TestExceptionFormat.FULL
         showStandardStreams = true
+    }
+}
+
+tasks.withType<KotlinCompile> {
+    kotlinOptions {
+        jvmTarget = "1.8"
     }
 }
