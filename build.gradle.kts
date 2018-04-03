@@ -18,17 +18,13 @@ buildscript {
 }
 
 plugins {
-    application
+    java
     kotlin("jvm") version "1.2.31"
     id("com.bmuschko.docker-remote-api") version "3.2.5"
 }
 
 repositories {
     jcenter()
-}
-
-application {
-    mainClassName = "samples.HelloWorldKt"
 }
 
 dependencies {
@@ -112,22 +108,22 @@ tasks {
         description = "run Integration tests"
 
         dependsOn(test, dockerStart, dockerWaitHealthy)
-        finalizedBy(dockerStop)
         maxParallelForks = 2
-
         include("**/*IT.class")
+        finalizedBy(dockerStop)
+    }
+
+    withType<Test>{
+        testLogging {
+            exceptionFormat = TestExceptionFormat.FULL
+            showStandardStreams = true
+        }
+    }
+
+    withType<KotlinCompile> {
+        kotlinOptions {
+            jvmTarget = "1.8"
+        }
     }
 }
 
-tasks.withType<Test>{
-    testLogging {
-        exceptionFormat = TestExceptionFormat.FULL
-        showStandardStreams = true
-    }
-}
-
-tasks.withType<KotlinCompile> {
-    kotlinOptions {
-        jvmTarget = "1.8"
-    }
-}
