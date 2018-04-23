@@ -19,8 +19,8 @@ buildscript {
 
 plugins {
     java
-    kotlin("jvm") version "1.2.31"
-    id("com.bmuschko.docker-remote-api") version "3.2.5"
+    kotlin("jvm") version "1.2.40"
+    id("com.bmuschko.docker-remote-api") version "3.2.7"
 }
 
 repositories {
@@ -111,6 +111,10 @@ tasks {
         maxParallelForks = 2
         include("**/*IT.class")
         finalizedBy(dockerStop)
+    }
+
+    "check" {
+        dependsOn(integrationTest)
     }
 
     withType<Test>{
