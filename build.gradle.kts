@@ -6,6 +6,7 @@ import com.bmuschko.gradle.docker.tasks.container.DockerStartContainer
 import com.bmuschko.gradle.docker.tasks.container.DockerStopContainer
 import com.bmuschko.gradle.docker.tasks.container.extras.DockerWaitHealthyContainer
 import com.bmuschko.gradle.docker.tasks.image.DockerBuildImage
+import com.bmuschko.gradle.docker.tasks.image.DockerListImages
 import com.bmuschko.gradle.docker.tasks.image.DockerPullImage
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
@@ -19,8 +20,8 @@ buildscript {
 
 plugins {
     java
-    kotlin("jvm") version "1.2.40"
-    id("com.bmuschko.docker-remote-api") version "3.2.7"
+    kotlin("jvm") version "1.2.41"
+    id("com.bmuschko.docker-remote-api") version "3.3.2"
 }
 
 repositories {
@@ -43,7 +44,7 @@ dependencies {
     runtime("org.slf4j:log4j-over-slf4j:1.7.25")
 
     testCompile("junit:junit:4.12")
-    testCompile("org.assertj:assertj-core:3.9.1")
+    testCompile("org.assertj:assertj-core:3.10.0")
     testCompile("net.wuerl.kotlin:assertj-core-kotlin:0.2.1")
     testCompile("com.101tec:zkclient:0.10")
     testCompile("org.apache.kafka:kafka-clients:$kafkaVersion")
@@ -128,6 +129,15 @@ tasks {
         kotlinOptions {
             jvmTarget = "1.8"
         }
+    }
+
+    val dockerList by creating(DockerListImages::class) {
+        onNext = closureOf<List<Any>> { println(this) }
+    }
+
+    val dockerPull by creating(DockerPullImage::class) {
+        repository = "postgres"
+        tag = "9.6.9-alpine"
     }
 }
 
